@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>AI 사용량</title>
+<style>
+  :root { --bg-alpha: 0.92; }
+  html, body { margin: 0; padding: 0; height: 100%; background: transparent; overflow: hidden; }
+  body {
+    font-family: "Segoe UI", -apple-system, sans-serif;
+    color: #e6e6e6;
+    background: rgba(24, 24, 28, var(--bg-alpha));
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-sizing: border-box;
+    height: 100%;
+  }
+
+  #header {
+    display: flex;
+    align-items: center;
+    height: 28px;
+    box-sizing: border-box;
+    padding: 0 6px;
+    -webkit-app-region: drag;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    border-radius: 10px 10px 0 0;
+  }
+  #header:hover { opacity: 1; }
+  #title { flex: 1; font-size: 11px; font-weight: 600; color: #9a9aa2; letter-spacing: 0.02em; }
+  .icon-btn {
+    -webkit-app-region: no-drag;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    color: #8a8a92;
+    font-size: 11px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .icon-btn:hover { background: rgba(255, 255, 255, 0.08); }
+  .icon-btn.active { color: #7c93ff; }
+  #closeBtn:hover { background: #c0392b; color: #fff; }
+
+  #opacity {
+    -webkit-app-region: no-drag;
+    width: 44px;
+    height: 12px;
+    margin: 0 4px;
+    cursor: pointer;
+  }
+
+  #rows { padding: 0 9px 6px; }
+  .row {
+    display: flex;
+    align-items: flex-start;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .row:last-child { border-bottom: none; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; margin-top: 3px; flex-shrink: 0; background: #555; }
+  .info { flex: 1; min-width: 0; }
+  .name-line { display: flex; align-items: baseline; justify-content: space-between; }
+  .name { font-size: 12px; font-weight: 600; }
+  .status-text { font-size: 10px; color: #77777f; }
+  .metric { margin-top: 3px; }
+  .metric-top { display: flex; align-items: baseline; justify-content: space-between; }
+  .metric-label { font-size: 10px; color: #9a9aa2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+  .metric-percent { font-size: 11px; font-weight: 700; }
+  .bar-track { height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.08); margin-top: 2px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 2px; background: #6c63ff; width: 0%; transition: width 0.4s ease; }
+  .reset { font-size: 9px; color: #6a6a72; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .link-btn {
+    -webkit-app-region: no-drag;
+    margin-left: 6px;
+    margin-top: 1px;
+    font-size: 10px;
+    color: #6a6a72;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .link-btn:hover { color: #b0b0b8; }
+</style>
+</head>
+<body>
+  <div id="header">
+    <div id="title">AI 사용량</div>
+    <input type="range" id="opacity" min="20" max="100" title="배경 투명도" />
+    <div class="icon-btn" id="refresh" title="새로고침">&#8635;</div>
+    <div class="icon-btn" id="pin" title="항상 위">&#128204;</div>
+    <div class="icon-btn" id="closeBtn" title="숨기기">&#10005;</div>
+  </div>
+  <div id="rows"></div>
+  <script src="renderer.js"></script>
+</body>
+</html>

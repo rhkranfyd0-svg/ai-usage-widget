@@ -1,0 +1,41 @@
+{
+  "name": "ai-usage-widget",
+  "version": "1.0.0",
+  "description": "Claude / ChatGPT / Gemini 구독 사용량을 항상 위에 띄워두고 확인하는 미니 위젯",
+  "main": "main.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --config.directories.output=%TEMP%/aiuw-build"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.aiusagewidget.app",
+    "productName": "AI Usage Widget",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "index.html",
+      "assets/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "AI Usage Widget"
+    }
+  }
+}
