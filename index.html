@@ -84,9 +84,54 @@
     flex-shrink: 0;
   }
   .link-btn:hover { color: #b0b0b8; }
+
+  .login-btn {
+    display: inline-block;
+    margin-top: 3px;
+    padding: 3px 9px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #fff;
+    background: #4a4ae0;
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .login-btn:hover { background: #5b5bf0; }
+
+  #loginBar {
+    display: none;
+    align-items: center;
+    height: 34px;
+    box-sizing: border-box;
+    padding: 0 10px;
+    background: rgba(30, 30, 36, 0.98);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px 10px 0 0;
+    -webkit-app-region: drag;
+  }
+  body.login-mode #loginBar { display: flex; }
+  body.login-mode #header, body.login-mode #rows { display: none; }
+  #loginBarText { flex: 1; font-size: 11.5px; color: #c8c8d0; }
+  #loginDone {
+    -webkit-app-region: no-drag;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    background: #4a4ae0;
+    border-radius: 5px;
+    cursor: pointer;
+    user-select: none;
+  }
+  #loginDone:hover { background: #5b5bf0; }
 </style>
 </head>
 <body>
+  <div id="loginBar">
+    <div id="loginBarText">로그인 중...</div>
+    <div id="loginDone">완료</div>
+  </div>
   <div id="header">
     <div id="title">AI 사용량</div>
     <input type="range" id="opacity" min="20" max="100" title="배경 투명도" />

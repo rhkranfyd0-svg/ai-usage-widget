@@ -1,6 +1,6 @@
 {
   "name": "ai-usage-widget",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Claude / ChatGPT / Gemini 구독 사용량을 항상 위에 띄워두고 확인하는 미니 위젯",
   "main": "main.js",
   "license": "MIT",

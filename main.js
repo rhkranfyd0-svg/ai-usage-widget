@@ -203,7 +203,11 @@ async function fetchGeminiUsage(attempt) {
   await wait(2500);
   await view.webContents.executeJavaScript(clickByLabelJs(['설정', 'Settings']));
   await wait(1500);
-  await view.webContents.executeJavaScript(findByTextJs(['사용량 한도', 'Usage limits', 'Usage limit']));
+  const usageItemFound = await view.webContents.executeJavaScript(
+    findByTextJs(['사용량 한도', 'Usage limits', 'Usage limit'])
+  );
+  usageScreenMissing.gemini = !usageItemFound;
+  appendLog(`gemini attempt${attempt}: usageItemFound=${usageItemFound}`);
   await wait(2500);
   const text = await view.webContents.executeJavaScript('document.body.innerText');
   saveDebugDump('gemini', text);
@@ -214,11 +218,47 @@ async function fetchGeminiUsage(attempt) {
 
 const FETCHERS = { claude: fetchClaudeUsage, chatgpt: fetchChatgptUsage, gemini: fetchGeminiUsage };
 
+const LOGIN_URL_HINTS = ['/login', '/auth', 'accounts.google.com', 'signin', 'sign-in'];
+
+const HAS_SIGNIN_CONTROL_JS = `
+(function(){
+  const words = ['로그인', 'sign in', 'log in', 'sign-in'];
+  const cands = Array.from(document.querySelectorAll('button, a, [role="button"]'));
+  return cands.some(e => {
+    const t = (e.textContent || '').trim().toLowerCase();
+    if (t.length > 20) return false;
+    return words.some(w => t === w);
+  });
+})()`;
+
+// Set by a fetcher when it could not even reach the usage screen — a strong
+// logged-out signal for services that render no explicit sign-in control.
+const usageScreenMissing = {};
+
+async function looksLoggedOut(id) {
+  const view = views[id];
+  if (!view) return false;
+  const url = (view.webContents.getURL() || '').toLowerCase();
+  if (LOGIN_URL_HINTS.some((h) => url.includes(h))) return true;
+  if (usageScreenMissing[id]) return true;
+  try {
+    return await view.webContents.executeJavaScript(HAS_SIGNIN_CONTROL_JS);
+  } catch {
+    return false;
+  }
+}
+
 const MAX_ATTEMPTS = 4;
 
 async function pollService(id, attempt = 1) {
   try {
     const metrics = await FETCHERS[id](attempt);
+    if (metrics.length === 0 && (await looksLoggedOut(id))) {
+      appendLog(`${id} attempt${attempt}: needsLogin`);
+      latestUsage[id] = { metrics: [], ok: false, needsLogin: true, updatedAt: Date.now() };
+      if (mainWindow) mainWindow.webContents.send('usage-update', { id, data: latestUsage[id] });
+      return;
+    }
     if (metrics.length === 0 && attempt < MAX_ATTEMPTS) {
       await wait(1500 * attempt);
       return pollService(id, attempt + 1);
@@ -293,8 +333,13 @@ function createWindow() {
     views[svc.id] = view;
   });
 
-  mainWindow.on('resize', saveState);
-  mainWindow.on('move', saveState);
+  mainWindow.on('resize', () => {
+    layoutLoginView();
+    if (!loginState) saveState();
+  });
+  mainWindow.on('move', () => {
+    if (!loginState) saveState();
+  });
 
   mainWindow.on('close', (e) => {
     if (!app.isQuiting) {
@@ -357,6 +402,53 @@ ipcMain.on('refresh-all', () => {
 ipcMain.on('open-external', (_e, id) => {
   const svc = SERVICES.find((s) => s.id === id);
   if (svc) shell.openExternal(svc.homeUrl);
+});
+
+const LOGIN_BAR_HEIGHT = 34;
+let loginState = null;
+
+function layoutLoginView() {
+  if (!loginState || !mainWindow) return;
+  const [width, height] = mainWindow.getContentSize();
+  views[loginState.id].setBounds({
+    x: 0,
+    y: LOGIN_BAR_HEIGHT,
+    width,
+    height: Math.max(0, height - LOGIN_BAR_HEIGHT),
+  });
+}
+
+ipcMain.on('start-login', (_e, id) => {
+  const svc = SERVICES.find((s) => s.id === id);
+  if (!svc || !views[id] || loginState) return;
+
+  loginState = { id, bounds: mainWindow.getBounds(), wasOnTop: mainWindow.isAlwaysOnTop() };
+
+  mainWindow.setAlwaysOnTop(false);
+  mainWindow.setBounds({
+    x: loginState.bounds.x,
+    y: loginState.bounds.y,
+    width: 520,
+    height: 720,
+  });
+  mainWindow.setBrowserView(views[id]);
+  layoutLoginView();
+  views[id].webContents.loadURL(svc.homeUrl);
+  mainWindow.webContents.send('login-mode', { id, label: svc.label });
+});
+
+ipcMain.on('end-login', async () => {
+  if (!loginState) return;
+  const { id, bounds, wasOnTop } = loginState;
+  loginState = null;
+
+  mainWindow.setBrowserView(null);
+  mainWindow.setBounds(bounds);
+  mainWindow.setAlwaysOnTop(wasOnTop);
+  mainWindow.webContents.send('login-mode', null);
+  saveState();
+
+  await pollService(id);
 });
 
 ipcMain.on('set-bg-alpha', (_e, value) => {

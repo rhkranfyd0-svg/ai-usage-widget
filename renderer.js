@@ -63,6 +63,15 @@ function renderUsage(id, data) {
   const els = rowEls[id];
   if (!els) return;
 
+  if (data && data.needsLogin) {
+    els.status.textContent = '로그인 필요';
+    els.metrics.innerHTML = '<div class="login-btn">로그인하기</div>';
+    els.metrics.querySelector('.login-btn').addEventListener('click', () =>
+      window.widget.startLogin(id)
+    );
+    return;
+  }
+
   if (!data || !data.ok || !data.metrics || data.metrics.length === 0) {
     els.status.textContent = data && data.ok === false ? '오류' : '--';
     els.metrics.innerHTML = `<div class="reset">${
@@ -102,3 +111,14 @@ window.widget.getInitState().then((state) => {
 
 window.widget.onUsageUpdate(({ id, data }) => renderUsage(id, data));
 window.widget.onPinState(setPin);
+
+const loginBarText = document.getElementById('loginBarText');
+document.getElementById('loginDone').addEventListener('click', () => window.widget.endLogin());
+window.widget.onLoginMode((payload) => {
+  if (payload) {
+    loginBarText.textContent = `${payload.label} 로그인 후 [완료]를 누르세요`;
+    document.body.classList.add('login-mode');
+  } else {
+    document.body.classList.remove('login-mode');
+  }
+});
