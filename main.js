@@ -2,6 +2,8 @@ const { app, BrowserWindow, BrowserView, Tray, Menu, ipcMain, nativeImage, shell
 const path = require('path');
 const fs = require('fs');
 
+const { extractMetricsByAnchors, ANCHORS } = require('./parse');
+
 const STATE_FILE = path.join(app.getPath('userData'), 'window-state.json');
 const POLL_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -54,60 +56,6 @@ function waitForIdle(view, timeoutMs) {
     view.webContents.once('did-stop-loading', onDone);
   });
 }
-
-const REMAINING_WORDS = ['남음', 'left', 'remaining'];
-const USED_WORDS = ['사용됨', '사용', 'used'];
-const RESET_WORDS = ['초기화', '재설정', 'resets', 'reset'];
-
-function containsAny(line, words) {
-  const lower = line.toLowerCase();
-  return words.some((w) => lower.includes(w.toLowerCase()));
-}
-
-function extractMetricsByAnchors(text, anchors) {
-  const lines = text
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean);
-
-  const metrics = [];
-  anchors.forEach(({ match, label }) => {
-    const idx = lines.findIndex((l) => match.some((m) => l.toLowerCase() === m.toLowerCase()));
-    if (idx === -1) return;
-    let usedPercent = null;
-    let resetText = null;
-    for (let k = idx + 1; k < Math.min(lines.length, idx + 8); k++) {
-      const l = lines[k];
-      if (usedPercent === null) {
-        const m = l.match(/(\d{1,3})\s*%/);
-        if (m && (containsAny(l, REMAINING_WORDS) || containsAny(l, USED_WORDS))) {
-          const num = parseInt(m[1], 10);
-          usedPercent = containsAny(l, REMAINING_WORDS) ? 100 - num : num;
-        }
-      }
-      if (resetText === null && containsAny(l, RESET_WORDS)) {
-        resetText = l;
-      }
-      if (usedPercent !== null && resetText !== null) break;
-    }
-    if (usedPercent !== null) {
-      metrics.push({ label, usedPercent, resetText });
-    }
-  });
-  return metrics;
-}
-
-const ANCHORS = {
-  claude: [
-    { match: ['현재 세션', 'Current session'], label: '5h' },
-    { match: ['주간 한도', 'Weekly limit'], label: 'Weekly' },
-  ],
-  chatgpt: [{ match: ['주간 사용량 한도', 'Weekly usage limit'], label: 'Weekly' }],
-  gemini: [
-    { match: ['현재 사용량', 'Current usage'], label: 'Current' },
-    { match: ['주간 한도', 'Weekly limit'], label: 'Weekly' },
-  ],
-};
 
 function findByTextJs(candidates) {
   return `

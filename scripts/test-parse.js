@@ -1,56 +1,7 @@
-const REMAINING_WORDS = ['남음', 'left', 'remaining'];
-const USED_WORDS = ['사용됨', '사용', 'used'];
-const RESET_WORDS = ['초기화', '재설정', 'resets', 'reset'];
+// Fixtures are real page text captured from each service. Add a case here
+// whenever a service changes its usage screen and the anchors need updating.
 
-function containsAny(line, words) {
-  const lower = line.toLowerCase();
-  return words.some((w) => lower.includes(w.toLowerCase()));
-}
-
-function extractMetricsByAnchors(text, anchors) {
-  const lines = text
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean);
-
-  const metrics = [];
-  anchors.forEach(({ match, label }) => {
-    const idx = lines.findIndex((l) => match.some((m) => l.toLowerCase() === m.toLowerCase()));
-    if (idx === -1) return;
-    let usedPercent = null;
-    let resetText = null;
-    for (let k = idx + 1; k < Math.min(lines.length, idx + 8); k++) {
-      const l = lines[k];
-      if (usedPercent === null) {
-        const m = l.match(/(\d{1,3})\s*%/);
-        if (m && (containsAny(l, REMAINING_WORDS) || containsAny(l, USED_WORDS))) {
-          const num = parseInt(m[1], 10);
-          usedPercent = containsAny(l, REMAINING_WORDS) ? 100 - num : num;
-        }
-      }
-      if (resetText === null && containsAny(l, RESET_WORDS)) {
-        resetText = l;
-      }
-      if (usedPercent !== null && resetText !== null) break;
-    }
-    if (usedPercent !== null) {
-      metrics.push({ label, usedPercent, resetText });
-    }
-  });
-  return metrics;
-}
-
-const ANCHORS = {
-  claude: [
-    { match: ['현재 세션', 'Current session'], label: '5h' },
-    { match: ['주간 한도', 'Weekly limit'], label: 'Weekly' },
-  ],
-  chatgpt: [{ match: ['주간 사용량 한도', 'Weekly usage limit'], label: 'Weekly' }],
-  gemini: [
-    { match: ['현재 사용량', 'Current usage'], label: 'Current' },
-    { match: ['주간 한도', 'Weekly limit'], label: 'Weekly' },
-  ],
-};
+const { extractMetricsByAnchors, ANCHORS } = require('../parse');
 
 const CASES = [
   {
@@ -91,18 +42,45 @@ Resets in 8 hr 57 min
   {
     name: 'chatgpt-ko',
     service: 'chatgpt',
-    text: `주간 사용량 한도
-0% 남음
-2026. 8. 20. 오후 12:50 초기화`,
-    expect: [{ label: 'Weekly', usedPercent: 100 }],
+    text: `사용량
+플랜 한도
+Codex, Work, 워크스페이스 에이전트, Excel용 ChatGPT에서 공유됩니다.
+5시간 한도
+2시간 25분 후 초기화
+88% 남음
+주간 한도
+6일 3시간 후 초기화
+92% 남음
+사용량 한도 재설정`,
+    expect: [
+      { label: '5h', usedPercent: 12 },
+      { label: 'Weekly', usedPercent: 8 },
+    ],
   },
   {
     name: 'chatgpt-en',
     service: 'chatgpt',
-    text: `Weekly usage limit
-35% left
-Resets Aug 20, 2026, 12:50 PM`,
-    expect: [{ label: 'Weekly', usedPercent: 65 }],
+    text: `Usage
+Plan limits
+5-hour limit
+Resets in 2 hr 25 min
+88% left
+Weekly limit
+Resets in 6 days 3 hr
+92% left`,
+    expect: [
+      { label: '5h', usedPercent: 12 },
+      { label: 'Weekly', usedPercent: 8 },
+    ],
+  },
+  {
+    // The pre-Sep-2026 single-limit screen, still matched via fallback anchors.
+    name: 'chatgpt-ko-legacy',
+    service: 'chatgpt',
+    text: `주간 사용량 한도
+0% 남음
+2026. 8. 20. 오후 12:50 초기화`,
+    expect: [{ label: 'Weekly', usedPercent: 100 }],
   },
   {
     name: 'gemini-ko',
